@@ -11,6 +11,7 @@ import OptionSelect from "@modules/products/components/product-actions/option-se
 
 import MobileActions from "./mobile-actions"
 import ProductPrice from "../product-price"
+import ProductEarnPoints from "../product-earn-points"
 import { addToCart } from "@lib/data/cart"
 import { HttpTypes } from "@medusajs/types"
 
@@ -18,6 +19,7 @@ type ProductActionsProps = {
   product: HttpTypes.StoreProduct
   region: HttpTypes.StoreRegion
   disabled?: boolean
+  customer?: HttpTypes.StoreCustomer | null
 }
 
 const optionsAsKeymap = (variantOptions: any) => {
@@ -33,6 +35,7 @@ export default function ProductActions({
   product,
   region,
   disabled,
+  customer,
 }: ProductActionsProps) {
   const [options, setOptions] = useState<Record<string, string | undefined>>({})
   const [isAdding, setIsAdding] = useState(false)
@@ -134,6 +137,8 @@ export default function ProductActions({
         </div>
 
         <ProductPrice product={product} variant={selectedVariant} />
+
+        <ProductEarnPoints variant={selectedVariant} customer={customer ?? null} />
 
         <Button
           onClick={handleAddToCart}

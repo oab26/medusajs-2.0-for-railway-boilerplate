@@ -10,6 +10,7 @@ import DeleteButton from "@modules/common/components/delete-button"
 import LineItemOptions from "@modules/common/components/line-item-options"
 import LineItemPrice from "@modules/common/components/line-item-price"
 import LineItemUnitPrice from "@modules/common/components/line-item-unit-price"
+import LineItemPoints from "@modules/common/components/line-item-points"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Spinner from "@modules/common/icons/spinner"
 import Thumbnail from "@modules/products/components/thumbnail"
@@ -125,6 +126,7 @@ const Item = ({ item, type = "full" }: ItemProps) => {
             </span>
           )}
           <LineItemPrice item={item} style="tight" />
+          <LineItemPoints item={item} />
         </span>
       </Table.Cell>
     </Table.Row>

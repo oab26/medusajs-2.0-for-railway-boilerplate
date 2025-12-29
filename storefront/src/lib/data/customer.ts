@@ -6,11 +6,12 @@ import { HttpTypes } from "@medusajs/types"
 import { revalidateTag } from "next/cache"
 import { redirect } from "next/navigation"
 import { cache } from "react"
-import { getAuthHeaders, removeAuthToken, setAuthToken } from "./cookies"
+import { getAuthHeaders, removeAuthToken, setAuthToken, getCartId } from "./cookies"
 
 export const getCustomer = cache(async function () {
+  const headers = await getAuthHeaders()
   return await sdk.store.customer
-    .retrieve({}, { next: { tags: ["customer"] }, ...getAuthHeaders() })
+    .retrieve({}, { next: { tags: ["customer"] }, ...headers })
     .then(({ customer }) => customer)
     .catch(() => null)
 })
@@ -18,8 +19,9 @@ export const getCustomer = cache(async function () {
 export const updateCustomer = cache(async function (
   body: HttpTypes.StoreUpdateCustomer
 ) {
+  const headers = await getAuthHeaders()
   const updateRes = await sdk.store.customer
-    .update(body, {}, getAuthHeaders())
+    .update(body, {}, headers)
     .then(({ customer }) => customer)
     .catch(medusaError)
 
@@ -55,10 +57,10 @@ export async function signup(_currentState: unknown, formData: FormData) {
       password,
     })
 
-    setAuthToken(typeof loginToken === 'string' ? loginToken : loginToken.location)
+    await setAuthToken(typeof loginToken === 'string' ? loginToken : loginToken.location)
 
     revalidateTag("customer")
-    return createdCustomer
+    return null
   } catch (error: any) {
     return error.toString()
   }
@@ -69,22 +71,74 @@ export async function login(_currentState: unknown, formData: FormData) {
   const password = formData.get("password") as string
 
   try {
-    await sdk.auth
-      .login("customer", "emailpass", { email, password })
-      .then((token) => {
-        setAuthToken(typeof token === 'string' ? token : token.location)
-        revalidateTag("customer")
-      })
+    const token = await sdk.auth.login("customer", "emailpass", { email, password })
+
+    if (typeof token !== "string") {
+      return "Authentication requires additional steps"
+    }
+
+    await setAuthToken(token)
+
+    // Transfer guest cart to logged-in customer and apply tier promotion
+    const cartId = await getCartId()
+    const headers = await getAuthHeaders()
+    if (cartId && headers.authorization) {
+      try {
+        await sdk.store.cart.transferCart(cartId, {}, headers)
+        // Apply tier promotion after cart transfer
+        await fetch(`${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000"}/store/carts/${cartId}/apply-tier-promotion`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "",
+          },
+        })
+      } catch (e) {
+        // Ignore - cart might already be linked or promotion already applied
+      }
+    }
+
+    revalidateTag("customer")
+    revalidateTag("auth")
+    revalidateTag("cart")
+
+    return null
   } catch (error: any) {
-    return error.toString()
+    return error.message || error.toString()
   }
 }
 
 export async function signout(countryCode: string) {
-  await sdk.auth.logout()
-  removeAuthToken()
+  // Get cart ID before logging out
+  const cartId = await getCartId()
+
+  await removeAuthToken()
+
+  try {
+    await sdk.auth.logout()
+  } catch (e) {
+    // Ignore logout errors - token might already be invalid
+  }
+
+  // Remove tier promotions from cart on logout
+  if (cartId) {
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000"}/store/carts/${cartId}/remove-tier-promotions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || "",
+        },
+      })
+    } catch (e) {
+      // Ignore errors - promotion removal is best-effort
+      console.error("Failed to remove tier promotions:", e)
+    }
+  }
+
   revalidateTag("auth")
   revalidateTag("customer")
+  revalidateTag("cart")
   redirect(`/${countryCode}/account`)
 }
 
@@ -105,8 +159,9 @@ export const addCustomerAddress = async (
     phone: formData.get("phone") as string,
   }
 
+  const headers = await getAuthHeaders()
   return sdk.store.customer
-    .createAddress(address, {}, getAuthHeaders())
+    .createAddress(address, {}, headers)
     .then(({ customer }) => {
       revalidateTag("customer")
       return { success: true, error: null }
@@ -119,8 +174,9 @@ export const addCustomerAddress = async (
 export const deleteCustomerAddress = async (
   addressId: string
 ): Promise<void> => {
+  const headers = await getAuthHeaders()
   await sdk.store.customer
-    .deleteAddress(addressId, getAuthHeaders())
+    .deleteAddress(addressId, headers)
     .then(() => {
       revalidateTag("customer")
       return { success: true, error: null }
@@ -149,8 +205,9 @@ export const updateCustomerAddress = async (
     phone: formData.get("phone") as string,
   }
 
+  const headers = await getAuthHeaders()
   return sdk.store.customer
-    .updateAddress(addressId, address, {}, getAuthHeaders())
+    .updateAddress(addressId, address, {}, headers)
     .then(() => {
       revalidateTag("customer")
       return { success: true, error: null }

@@ -1,0 +1,25 @@
+import type { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { z } from "zod"
+import { updateReviewWorkflow } from "../../../../workflows/update-review"
+
+export const PostAdminUpdateReviewsStatusSchema = z.object({
+  ids: z.array(z.string()),
+  status: z.enum(["pending", "approved", "rejected"]),
+})
+
+type PostAdminUpdateReviewsStatusReq = z.infer<
+  typeof PostAdminUpdateReviewsStatusSchema
+>
+
+export async function POST(
+  req: MedusaRequest<PostAdminUpdateReviewsStatusReq>,
+  res: MedusaResponse
+) {
+  const { ids, status } = req.validatedBody
+
+  const { result } = await updateReviewWorkflow(req.scope).run({
+    input: ids.map((id) => ({ id, status })),
+  })
+
+  res.json(result)
+}

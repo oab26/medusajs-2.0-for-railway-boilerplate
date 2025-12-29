@@ -1,10 +1,21 @@
 import React, { useState, useEffect } from "react"
 import Input from "@modules/common/components/input"
 import CountrySelect from "../country-select"
+import PakistanLocationSelect from "../pakistan-location-select"
 import { HttpTypes } from "@medusajs/types"
 
 const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
-  const [formData, setFormData] = useState<any>({})
+  const [formData, setFormData] = useState<any>({
+    "billing_address.first_name": cart?.billing_address?.first_name || "",
+    "billing_address.last_name": cart?.billing_address?.last_name || "",
+    "billing_address.address_1": cart?.billing_address?.address_1 || "",
+    "billing_address.company": cart?.billing_address?.company || "",
+    "billing_address.postal_code": cart?.billing_address?.postal_code || "",
+    "billing_address.city": cart?.billing_address?.city || "",
+    "billing_address.country_code": cart?.billing_address?.country_code || "",
+    "billing_address.province": cart?.billing_address?.province || "",
+    "billing_address.phone": cart?.billing_address?.phone || "",
+  })
 
   useEffect(() => {
     setFormData({
@@ -30,6 +41,15 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
       [e.target.name]: e.target.value,
     })
   }
+
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
+  }
+
+  const isPakistan = formData["billing_address.country_code"] === "pk"
 
   return (
     <>
@@ -78,15 +98,6 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
           required
           data-testid="billing-postal-input"
         />
-        <Input
-          label="City"
-          name="billing_address.city"
-          autoComplete="address-level2"
-          value={formData["billing_address.city"]}
-          onChange={handleChange}
-          required
-          data-testid="billing-city-input"
-        />
         <CountrySelect
           name="billing_address.country_code"
           autoComplete="country"
@@ -96,15 +107,40 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
           required
           data-testid="billing-country-select"
         />
-        <Input
-          label="State / Province"
-          name="billing_address.province"
-          autoComplete="address-level1"
-          value={formData["billing_address.province"]}
-          onChange={handleChange}
-          required
-          data-testid="billing-province-input"
-        />
+        {isPakistan ? (
+          <PakistanLocationSelect
+            provinceValue={formData["billing_address.province"]}
+            cityValue={formData["billing_address.city"]}
+            onProvinceChange={(value) =>
+              handleSelectChange("billing_address.province", value)
+            }
+            onCityChange={(value) =>
+              handleSelectChange("billing_address.city", value)
+            }
+            addressPrefix="billing_address"
+            required
+          />
+        ) : (
+          <>
+            <Input
+              label="City"
+              name="billing_address.city"
+              autoComplete="address-level2"
+              value={formData["billing_address.city"]}
+              onChange={handleChange}
+              required
+              data-testid="billing-city-input"
+            />
+            <Input
+              label="State / Province"
+              name="billing_address.province"
+              autoComplete="address-level1"
+              value={formData["billing_address.province"]}
+              onChange={handleChange}
+              data-testid="billing-province-input"
+            />
+          </>
+        )}
         <Input
           label="Phone"
           name="billing_address.phone"

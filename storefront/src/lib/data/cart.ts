@@ -28,16 +28,27 @@ export async function retrieveCart() {
 export async function getOrSetCart(countryCode: string) {
   let cart = await retrieveCart()
   const region = await getRegion(countryCode)
+  const headers = await getAuthHeaders()
 
   if (!region) {
     throw new Error(`Region not found for country code: ${countryCode}`)
   }
 
   if (!cart) {
-    const cartResp = await sdk.store.cart.create({ region_id: region.id })
+    const cartResp = await sdk.store.cart.create({ region_id: region.id }, {}, headers)
     cart = cartResp.cart
     await setCartId(cart.id)
     revalidateTag("cart")
+  } else if (!cart.customer_id && (headers as any).authorization) {
+    // Transfer guest cart to logged-in customer
+    try {
+      await sdk.store.cart.transferCart(cart.id, {}, headers)
+      cart = await retrieveCart()
+      revalidateTag("cart")
+    } catch (e) {
+      // Ignore transfer errors - cart might already be linked
+      console.error("Cart transfer failed:", e)
+    }
   }
 
   if (cart && cart?.region_id !== region.id) {
@@ -45,7 +56,7 @@ export async function getOrSetCart(countryCode: string) {
       cart.id,
       { region_id: region.id },
       {},
-      await getAuthHeaders()
+      headers
     )
     revalidateTag("cart")
   }
@@ -137,7 +148,7 @@ export async function deleteLineItem(lineId: string) {
   }
 
   await sdk.store.cart
-    .deleteLineItem(cartId, lineId, await getAuthHeaders())
+    .deleteLineItem(cartId, lineId, {}, await getAuthHeaders())
     .then(() => {
       revalidateTag("cart")
     })

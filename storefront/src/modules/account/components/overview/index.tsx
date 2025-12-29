@@ -2,6 +2,7 @@ import { Container } from "@medusajs/ui"
 
 import ChevronDown from "@modules/common/icons/chevron-down"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import AccountLoyaltyPoints from "@modules/account/components/loyalty-points"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
 
@@ -63,6 +64,8 @@ const Overview = ({ customer, orders }: OverviewProps) => {
                   </span>
                 </div>
               </div>
+
+              <AccountLoyaltyPoints />
             </div>
 
             <div className="flex flex-col gap-y-4">

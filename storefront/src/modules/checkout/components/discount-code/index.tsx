@@ -2,7 +2,7 @@
 
 import { Badge, Heading, Input, Label, Text, Tooltip } from "@medusajs/ui"
 import React from "react"
-import { useFormState } from "react-dom"
+import { useActionState } from "react"
 
 import { applyPromotions, submitPromotionForm } from "@lib/data/cart"
 import { convertToLocale } from "@lib/util/money"
@@ -20,6 +20,7 @@ type DiscountCodeProps = {
 
 const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
   const [isOpen, setIsOpen] = React.useState(false)
+  const [promoError, setPromoError] = React.useState<string | null>(null)
 
   const { items = [], promotions = [] } = cart
   const removePromotionCode = async (code: string) => {
@@ -27,9 +28,14 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
       (promotion) => promotion.code !== code
     )
 
-    await applyPromotions(
-      validPromotions.filter((p) => p.code === undefined).map((p) => p.code!)
-    )
+    try {
+      await applyPromotions(
+        validPromotions.filter((p) => p.code === undefined).map((p) => p.code!)
+      )
+      setPromoError(null)
+    } catch (error: any) {
+      setPromoError(error.message || "Failed to remove promotion code")
+    }
   }
 
   const addPromotionCode = async (formData: FormData) => {
@@ -43,14 +49,18 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
       .map((p) => p.code!)
     codes.push(code.toString())
 
-    await applyPromotions(codes)
-
-    if (input) {
-      input.value = ""
+    try {
+      await applyPromotions(codes)
+      setPromoError(null)
+      if (input) {
+        input.value = ""
+      }
+    } catch (error: any) {
+      setPromoError(error.message || "Invalid promotion code")
     }
   }
 
-  const [message, formAction] = useFormState(submitPromotionForm, null)
+  const [message, formAction] = useActionState(submitPromotionForm, null)
 
   return (
     <div className="w-full bg-white flex flex-col">
@@ -91,7 +101,7 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
               </div>
 
               <ErrorMessage
-                error={message}
+                error={promoError || message}
                 data-testid="discount-error-message"
               />
             </>

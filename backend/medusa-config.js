@@ -117,22 +117,39 @@ const medusaConfig = {
         ]
       }
     }] : []),
-    ...(STRIPE_API_KEY && STRIPE_WEBHOOK_SECRET ? [{
+    {
       key: Modules.PAYMENT,
       resolve: '@medusajs/payment',
       options: {
         providers: [
           {
+            resolve: './src/modules/cod-payment',
+            id: 'cod',
+            options: {},
+          },
+          ...(STRIPE_API_KEY && STRIPE_WEBHOOK_SECRET ? [{
             resolve: '@medusajs/payment-stripe',
             id: 'stripe',
             options: {
               apiKey: STRIPE_API_KEY,
               webhookSecret: STRIPE_WEBHOOK_SECRET,
             },
-          },
+          }] : []),
         ],
       },
-    }] : [])
+    },
+    {
+      resolve: './src/modules/loyalty',
+    },
+    {
+      resolve: './src/modules/tier',
+    },
+    {
+      resolve: './src/modules/product-review',
+    },
+    {
+      resolve: '@medusajs/index',
+    }
   ],
   plugins: [
   ...(MEILISEARCH_HOST && MEILISEARCH_ADMIN_KEY ? [{

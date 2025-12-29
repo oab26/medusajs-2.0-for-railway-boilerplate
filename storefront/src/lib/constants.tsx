@@ -30,6 +30,10 @@ export const paymentInfoMap: Record<
     title: "Manual Payment",
     icon: <CreditCard />,
   },
+  "pp_cash-on-delivery_cod": {
+    title: "Cash on Delivery",
+    icon: <CreditCard />,
+  },
   // Add more payment providers here
 }
 
@@ -41,7 +45,8 @@ export const isPaypal = (providerId?: string) => {
   return providerId?.startsWith("pp_paypal")
 }
 export const isManual = (providerId?: string) => {
-  return providerId?.startsWith("pp_system_default")
+  return providerId?.startsWith("pp_system_default") ||
+         providerId?.startsWith("pp_cash-on-delivery")
 }
 
 // Add currencies that don't need to be divided by 100
